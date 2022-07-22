@@ -21,6 +21,7 @@ pipeline {
                 }
             }
             steps {
+                echo "1. Maven构建"
                 sh 'mvn clean package -Dfile.encoding=UTF-8 -DskipTests=true'
                 stash includes: 'target/*.jar', name: 'app'
             }
@@ -33,6 +34,7 @@ pipeline {
             }
             agent any
             steps {
+                echo "2. Docker 构建并推送"
                 unstash 'app'
                 sh "docker login -u ${HARBOR_CREDS_USR} -p ${HARBOR_CREDS_PSW} ${params.HARBOR_HOST}"
                 sh "docker build --build-arg JAR_FILE=`ls target/*.jar |cut -d '/' -f2` -t ${params.HARBOR_HOST}/${params.DOCKER_IMAGE}:${GIT_TAG} ."
@@ -53,6 +55,7 @@ pipeline {
                         }
                     }
                     steps {
+                        echo "3. 部署"
                         sh "mkdir -p ~/.kube"
                         sh "echo ${K8S_CONFIG} | base64 -d > ~/.kube/config"
                         sh "sed -e 's#{IMAGE_URL}#${params.HARBOR_HOST}/${params.DOCKER_IMAGE}#g;s#{IMAGE_TAG}#${GIT_TAG}#g;s#{APP_NAME}#${params.APP_NAME}#g;s#{SPRING_PROFILE}#k8s-test#g' k8s-deployment.tpl > k8s-deployment.yml"
